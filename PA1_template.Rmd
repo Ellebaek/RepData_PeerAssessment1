@@ -1,6 +1,6 @@
 ---
 title: "Reproducible Research Assignment 1"
-author: "Thomas Elleb√¶k"
+author: "Thomas Ellebaek"
 date: "Wednesday, September 16, 2015"
 output: html_document
 ---
@@ -12,7 +12,7 @@ Reading data into data table.
 
 ```{r}
 library(data.table)
-data <- fread("C:/Users/THEL/Desktop/Privat/RR/repdata_data_activity/activity.csv", na.strings="NA")
+data <- fread("E:/RR/repdata_data_activity/activity.csv", na.strings="NA")
 ```
 
 ## What is mean total number of steps taken per day?
@@ -101,7 +101,7 @@ Creating a new factor variable with two levels, one for weekdays and one for wee
 dataImp <- as.data.frame(dataImp)
 dataImp$date <- strptime(dataImp$date, "%Y-%m-%d")
 dataImp$wd <- weekdays(dataImp$date)
-dataImp$weekend <- dataImp$wd=="l√∏rdag" | dataImp$wd=="s√∏ndag"
+dataImp$weekend <- dataImp$wd=="lˆrdag" | dataImp$wd=="sˆndag"
 ```
 
 Creating a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).

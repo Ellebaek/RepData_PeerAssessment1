@@ -1,6 +1,6 @@
 ---
 title: "Reproducible Research Assignment 1"
-author: "Thomas Elleb√¶k"
+author: "Thomas Ellebaek"
 date: "Wednesday, September 16, 2015"
 output: html_document
 ---
@@ -13,36 +13,7 @@ Reading data into data table.
 
 ```r
 library(data.table)
-```
-
-```
-## Warning: package 'data.table' was built under R version 3.1.3
-```
-
-```
-## data.table 1.9.4  For help type: ?data.table
-## *** NB: by=.EACHI is now explicit. See README to restore previous behaviour.
-```
-
-```r
-data <- fread("C:/Users/THEL/Desktop/Privat/RR/repdata_data_activity/activity.csv", na.strings="NA")
-```
-
-```
-## Warning: running command 'C:\WINDOWS\system32\cmd.exe /c
-## (C:/Users/THEL/Desktop/Privat/RR/repdata_data_activity/activity.csv) >
-## C:\Users\Thomas\AppData\Local\Temp\Rtmp82mnhs\file1708219f3' had status 1
-```
-
-```
-## Warning in shell(paste("(", input, ") > ", tt, sep = "")):
-## '(C:/Users/THEL/Desktop/Privat/RR/repdata_data_activity/activity.csv) >
-## C:\Users\Thomas\AppData\Local\Temp\Rtmp82mnhs\file1708219f3' execution
-## failed with error code 1
-```
-
-```
-## Error in fread("C:/Users/THEL/Desktop/Privat/RR/repdata_data_activity/activity.csv", : File is empty: C:\Users\Thomas\AppData\Local\Temp\Rtmp82mnhs\file1708219f3
+data <- fread("E:/RR/repdata_data_activity/activity.csv", na.strings="NA")
 ```
 
 ## What is mean total number of steps taken per day?
@@ -51,18 +22,7 @@ Calculating the total number of steps taken per day.
 
 ```r
 nonNA <- subset(data, !is.na(steps))
-```
-
-```
-## Error in subset.default(data, !is.na(steps)): object 'steps' not found
-```
-
-```r
 stepsPerDay <- nonNA[,.(count = sum(steps)),by=list(date)]
-```
-
-```
-## Error in eval(expr, envir, enclos): object 'nonNA' not found
 ```
 
 Creating histogram of the total number of steps taken each day.
@@ -70,45 +30,114 @@ Creating histogram of the total number of steps taken each day.
 
 ```r
 ave <- round(mean(stepsPerDay$count),2)
-```
-
-```
-## Error in mean(stepsPerDay$count): object 'stepsPerDay' not found
-```
-
-```r
 med <- median(stepsPerDay$count)
-```
-
-```
-## Error in median(stepsPerDay$count): object 'stepsPerDay' not found
-```
-
-```r
 hist(stepsPerDay$count, xlab="Steps per day", main="Histogram witout NA's")
-```
-
-```
-## Error in hist(stepsPerDay$count, xlab = "Steps per day", main = "Histogram witout NA's"): object 'stepsPerDay' not found
-```
-
-```r
 legend("topright", c(paste("Mean =", ave),paste("Median =", med)))
 ```
 
+![plot of chunk unnamed-chunk-3](figure/unnamed-chunk-3-1.png) 
+
+Distribution is almost symmetric, why mean 1.076619 &times; 10<sup>4</sup> and median 10765 are very close to eachother.
+
+## What is the average daily activity pattern?
+Creating a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all days (y-axis).
+
+
+```r
+nonNA$intervalExtra <- nonNA$interval
+stepsPerInterval <- nonNA[,.(stepsSum = sum(steps), intervalCount = sum(!is.na(intervalExtra))),by=list(interval)][order(interval)]
+
+stepsPerInterval$stepsPerInterval <- stepsPerInterval$stepsSum/stepsPerInterval$intervalCount
+
+maxStepsInInterval <- with(stepsPerInterval, max(stepsPerInterval))
+maxInterval <- with(stepsPerInterval, interval[stepsPerInterval==max(stepsPerInterval)])
+maxIntervalIndex <- with(stepsPerInterval, sum(interval <= maxInterval))
+
+plot(stepsPerInterval$stepsPerInterval, type="l", xaxt='n', main="Time series plot", xlab="5-minute intervals", ylab="Average daily step count")
+atSeq <- seq(1, nrow(stepsPerInterval),by=12)
+axis(1, at=atSeq, labels=stepsPerInterval$interval[atSeq])
+lines(c(maxIntervalIndex, maxIntervalIndex),c(0, 210), col=2)
+legend("topright", c(paste("Max: (", maxInterval, ",", round(maxStepsInInterval,1), ")")), col=2, lty=1)
 ```
-## Error in paste("Mean =", ave): cannot coerce type 'closure' to vector of type 'character'
+
+![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4-1.png) 
+
+The 5-minute interval, on average across all the days in the dataset, containing the maximum number of steps is interval 835.
+
+## Imputing missing values
+Calculating the total number of missing values in the dataset (i.e. the total number of rows with NAs).
+
+
+```r
+totalNumberNA <- sum(is.na(data$steps))
 ```
 
+Total number of rows with NA's is 2304.
+
+###Strategy for filling in all of the missing values in the dataset:
+*For each day-interval with missing value, we fill in average steps for this interval accros entire period. This is a simple good estimate.*
+
+Create a new dataset that is equal to the original dataset but with the missing data filled in, according to deviced strategy.
 
 
+```r
+dataNA <- subset(data, is.na(steps))
+setkey(dataNA, key=interval)
+setkey(stepsPerInterval, key=interval)
+dataNA <- merge(dataNA, stepsPerInterval, all.x=TRUE, all.y=FALSE)
+dataNA$steps <- dataNA$stepsPerInterval
+dataNA <- subset(dataNA, select=c(steps, date, interval))
+nonNA <- subset(nonNA, select=c(steps, date, interval))
+dataImp <- rbind(nonNA, dataNA)
+dataImp <- dataImp[order(date,interval)]
+```
+
+Creating a histogram of the total number of steps taken each day with imputed values instead of NA's.
 
 
+```r
+stepsPerDayImp <- dataImp[,.(count = sum(steps)),by=list(date)]
+ave <- round(mean(stepsPerDayImp$count),2)
+med <- round(median(stepsPerDayImp$count),2)
+hist(stepsPerDayImp$count, xlab="Steps per day", main="Histogram with imputed values")
+legend("topright", c(paste("Mean =", ave),paste("Median =", med)))
+```
+
+![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7-1.png) 
+
+Mean is unchanged 1.076619 &times; 10<sup>4</sup> and median 1.076619 &times; 10<sup>4</sup> is know equal to mean. So no real effect of the imputed values to the estimated total daily number of steps, indicating that the strategy for imputing values is valid.
+
+## Are there differences in activity patterns between weekdays and weekends?
+Creating a new factor variable with two levels, one for weekdays and one for weekends.
 
 
+```r
+dataImp <- as.data.frame(dataImp)
+dataImp$date <- strptime(dataImp$date, "%Y-%m-%d")
+dataImp$wd <- weekdays(dataImp$date)
+dataImp$weekend <- dataImp$wd=="lˆrdag" | dataImp$wd=="sˆndag"
+```
+
+Creating a panel plot containing a time series plot of the 5-minute interval (x-axis) and the average number of steps taken, averaged across all weekday days or weekend days (y-axis).
 
 
+```r
+dataImp <- as.data.table(dataImp)
+dataImp$intervalExtra <- dataImp$interval
 
+stepsPerIntDecomposed <- dataImp[,.(stepsSum = sum(steps), intervalCount = sum(!is.na(intervalExtra))),by=list(interval,weekend)][order(interval)]
 
+stepsPerIntDecomposed$stepsPerInterval <- stepsPerIntDecomposed$stepsSum/stepsPerIntDecomposed$intervalCount
 
+par(mfrow=c(2,1))
+series <- c("Weekdays", "Weekend")
+atSeq <- seq(1, nrow(stepsPerIntDecomposed),by=12)
+for (i in 0:1) {
+  plot(stepsPerIntDecomposed$stepsPerInterval[stepsPerIntDecomposed$weekend==i], type="l", xaxt='n', main=series[i+1], xlab="5-minute intervals", ylab="Average daily step count")
+  axis(1, at=atSeq, labels=stepsPerIntDecomposed$interval[atSeq])
+}
+```
 
+![plot of chunk unnamed-chunk-9](figure/unnamed-chunk-9-1.png) 
+
+Above plots show that the weekday and weekend patterns differ, but the analysis stops here, so we won't try to explain the differences. The difference indicate that the strategy for imputing missing values maybe could be improved by imputing different values for weekday and weekend intervals.
